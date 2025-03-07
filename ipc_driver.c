@@ -79,7 +79,7 @@ static ssize_t device_read(struct file *file, char __user *user_buffer, size_t l
 }
 
 // Write
-static ssize_t device_write(struct file *file, char __user *user_buffer, size_t len, loff_t *offset) {
+static ssize_t device_write(struct file *file, const char __user *user_buffer, size_t len, loff_t *offset) {
     size_t bytes_to_write = min(len, SHM_SIZE);
 
     mutex_lock(&w_mutex);
