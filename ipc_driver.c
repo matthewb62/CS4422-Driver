@@ -23,10 +23,16 @@ static int major_number; // Store dynamically allocated major number
 static char *shared_mem; // replacing buffer with shared memmory
 //static size_t buffer_size = 0; // Keeps track of how much data is stored in the buffer
 
+
 DEFINE_MUTEX(w_mutex); // mutex for writers
 
 struct semaphore r_counter; // semaphore for readers
 int  r_count = 0; //counter to track readers
+
+static struct class *ipc_class = NULL;
+static struct device *ipc_driver = NULL;
+
+
 
 
 // Open func
@@ -113,6 +119,10 @@ static int __init device_init(void) {
         return major_number;
     }
 
+    // for device class
+    ipc_class = class_create(THIS_MODULE, "ipc_class"); 
+    ipc_device = device_create(ipc_class, NULL, MKDEV(major_number, 0), NULL, "Simple_IPC");
+    
     //semaphore
     sema_init(&r_counter, 1);  // 1 for single reader
 
