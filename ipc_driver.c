@@ -8,6 +8,7 @@
 #include <linux/crypto.h>   // encryption
 #include <linux/slab.h>      // memory allocation
 #include <linux/mm.h>        // shared memory
+#include <linux/device.h> // for device registeration and device file
 
 
 #define DEVICE_NAME "Simple IPC"
