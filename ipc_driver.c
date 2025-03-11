@@ -31,9 +31,7 @@ struct semaphore r_counter; // semaphore for readers
 int  r_count = 0; //counter to track readers
 
 static struct class *ipc_class = NULL;
-static struct device *ipc_driver = NULL;
-
-
+static struct device *ipc_device;
 
 
 // Open func
@@ -121,7 +119,7 @@ static int __init device_init(void) {
     }
 
     // for device class
-    ipc_class = class_create(THIS_MODULE, "ipc_class"); 
+    ipc_class = class_create("ipc_class"); 
     ipc_device = device_create(ipc_class, NULL, MKDEV(major_number, 0), NULL, "Simple_IPC");
     
     //semaphore
