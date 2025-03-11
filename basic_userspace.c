@@ -9,9 +9,8 @@
 int main() {
     int fd; // fild descriptor
     char buffer[1024];
-
-    // Open 
     fd = open(DEVICE_PATH, O_RDWR); // open() syscall, O_RDWR flag for read/write mode
+    
     if (fd < 0) {
         perror("Failed to open device");
         return EXIT_FAILURE;
