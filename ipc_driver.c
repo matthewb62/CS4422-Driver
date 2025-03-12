@@ -5,9 +5,9 @@
 #include <linux/uaccess.h>
 #include <linux/mutex.h>
 #include <linux/semaphore.h>
-#include <linux/crypto.h>   // encryption
-#include <linux/slab.h>      // memory allocation
-#include <linux/mm.h>        // shared memory
+#include <linux/crypto.h>   // Encryption
+#include <linux/slab.h>      // Memory allocation
+#include <linux/mm.h>        // Shared memory
 #include <linux/cdev.h>
 
 
@@ -15,11 +15,11 @@
 #define MAJOR_DEVICE_NUMBER 42
 #define MINOR_DEVICE_NUMBER 0
 
-#define SHM_SIZE 1024
+#define SHM_SIZE 1024 // Shared Memory Size
 #define MAX_READER_COUNT 4 // The maximum amount of readers at any one time
 
 
-MODULE_LICENSE("GPL");
+MODULE_LICENSE("MIT");
 MODULE_AUTHOR("");
 MODULE_DESCRIPTION("A simple IPC driver");
 MODULE_VERSION("1.0");
