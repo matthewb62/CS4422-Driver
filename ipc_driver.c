@@ -96,6 +96,7 @@ static ssize_t device_write(struct file *file, const char __user *user_buffer, s
     // encrypt data
 
     printk(KERN_INFO "Device wrote %zu bytes\n", bytes_to_write);
+    memset(shared_mem + bytes_to_write, 0, SHM_SIZE - bytes_to_write); //clearing buffer
 
     mutex_unlock(&w_mutex);
 
