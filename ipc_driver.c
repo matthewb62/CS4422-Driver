@@ -66,6 +66,7 @@ static ssize_t device_read(struct file *file, char __user *user_buffer, size_t l
     
     
     if (copy_to_user(user_buffer, shared_mem, bytes_to_read)) { // copy data to user-space
+        size_t bytes_to_read = min(len, SHM_SIZE); // Ensure we don't read beyond buffer size
         return -EFAULT;
     }
    
@@ -90,6 +91,7 @@ static ssize_t device_write(struct file *file, const char __user *user_buffer, s
     mutex_lock(&w_mutex);
 
     if (copy_from_user(shared_mem, user_buffer, bytes_to_write)) {
+        shared_mem[bytes_to_write] = '\0';  // Ensure the string is null-terminated
         mutex_unlock(&w_mutex);
         return -EFAULT;
     }
