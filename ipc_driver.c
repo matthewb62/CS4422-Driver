@@ -20,10 +20,7 @@ MODULE_DESCRIPTION("A simple IPC driver");
 MODULE_VERSION("1.0");
 
 static int major_number; // Store dynamically allocated major number
-//static char buffer[BUFFER_SIZE]; 
 static char *shared_mem; // replacing buffer with shared memmory
-//static size_t buffer_size = 0; // Keeps track of how much data is stored in the buffer
-
 
 DEFINE_MUTEX(w_mutex); // mutex for writers
 
@@ -50,33 +47,27 @@ static int device_closed(struct inode *inode, struct file *file) {
 static ssize_t device_read(struct file *file, char __user *user_buffer, size_t len, loff_t *offset) {
     size_t bytes_to_read = min(len, SHM_SIZE);
 
-    //implementing semaphore 
     down_interruptible(&r_counter);
     r_count++;
 
-
-    // first reader locks the mutex so no writers can write
     if (r_count == 1) {     
         mutex_lock(&w_mutex);
     }
 
     up(&r_counter);
 
-    //encrypt data
+    shared_mem[bytes_to_read] = '\0'; 
     
-    shared_mem[bytes_to_read] = '\0'; // make sure to add terminator
-    
-    if (copy_to_user(user_buffer, shared_mem, bytes_to_read + 1)) { // copy data to user-space   (+1 for the null terminator)
-        size_t bytes_to_read = min(len, SHM_SIZE); // Ensure we don't read beyond buffer size
+    if (copy_to_user(user_buffer, shared_mem, bytes_to_read + 1)) {
         return -EFAULT;
     }
-   
-    printk(KERN_INFO "Device read %zu bytes\n", bytes_to_read); // log device logging upon read
+
+    printk(KERN_INFO "Device read %zu bytes\n", bytes_to_read);
 
     down_interruptible(&r_counter);
     r_count--;
 
-    if(r_count == 0) {   //last reader unlocks mutex to allow writing
+    if(r_count == 0) {   
         mutex_unlock(&w_mutex);
     }  
 
@@ -89,16 +80,19 @@ static ssize_t device_read(struct file *file, char __user *user_buffer, size_t l
 static ssize_t device_write(struct file *file, const char __user *user_buffer, size_t len, loff_t *offset) {
     size_t bytes_to_write = min(len, SHM_SIZE);
 
+    if (bytes_to_write >= SHM_SIZE) {
+        printk(KERN_ERR "Write attempt exceeds buffer size\n");
+        return -EFAULT;
+    }
+
     mutex_lock(&w_mutex);
 
     if (copy_from_user(shared_mem, user_buffer, bytes_to_write)) {
-        shared_mem[bytes_to_write] = '\0';  // Ensure the string is null-terminated
+        shared_mem[bytes_to_write] = '\0';  
         mutex_unlock(&w_mutex);
         return -EFAULT;
     }
 
-    // encrypt data
-    
     printk(KERN_INFO "Device wrote %zu bytes\n", bytes_to_write);
 
     mutex_unlock(&w_mutex);
@@ -115,24 +109,21 @@ static struct file_operations fops = {
 
 // intialising
 static int __init device_init(void) {
-    major_number = register_chrdev(0, DEVICE_NAME, &fops);  // register the device
+    major_number = register_chrdev(0, DEVICE_NAME, &fops);  
     if (major_number < 0) {
         printk(KERN_ALERT "Device registration failed\n");
         return major_number;
     }
 
-    // for device class
     ipc_class = class_create("ipc_class"); 
     ipc_device = device_create(ipc_class, NULL, MKDEV(major_number, 0), NULL, "Simple_IPC");
     
-    //semaphore
-    sema_init(&r_counter, 1);  // 1 for single reader
+    sema_init(&r_counter, 1);  
 
-    // allocating dynamic memory for shared memory using kmalloc
     shared_mem = kmalloc(SHM_SIZE, GFP_KERNEL);
     if (!shared_mem) {
         printk(KERN_ALERT "memory allocation failed\n");
-        return -ENOMEM;  // out of memory
+        return -ENOMEM;
     }
 
     printk(KERN_INFO "Device registered with major number %d\n", major_number);
@@ -141,8 +132,8 @@ static int __init device_init(void) {
 
 // Cleaning up the device
 static void __exit device_exit(void) {
-    unregister_chrdev(major_number, DEVICE_NAME);  // Unregister the device
-    kfree(shared_mem); // free the memory
+    unregister_chrdev(major_number, DEVICE_NAME);  
+    kfree(shared_mem); 
     printk(KERN_INFO "Device unregistered\n");
 }
 
