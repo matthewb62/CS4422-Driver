@@ -98,8 +98,6 @@ static ssize_t device_write(struct file *file, const char __user *user_buffer, s
     }
 
     // encrypt data
-
-    shared_mem[bytes_to_write] = '\0'; //null terminator
     
     printk(KERN_INFO "Device wrote %zu bytes\n", bytes_to_write);
 
