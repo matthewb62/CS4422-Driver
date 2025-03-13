@@ -64,8 +64,9 @@ static ssize_t device_read(struct file *file, char __user *user_buffer, size_t l
 
     //encrypt data
     
+    shared_mem[bytes_to_read] = '\0'; // make sure to add terminator
     
-    if (copy_to_user(user_buffer, shared_mem, bytes_to_read)) { // copy data to user-space
+    if (copy_to_user(user_buffer, shared_mem, bytes_to_read + 1)) { // copy data to user-space   (+1 for the null terminator)
         size_t bytes_to_read = min(len, SHM_SIZE); // Ensure we don't read beyond buffer size
         return -EFAULT;
     }
@@ -98,6 +99,8 @@ static ssize_t device_write(struct file *file, const char __user *user_buffer, s
 
     // encrypt data
 
+    shared_mem[bytes_to_write] = '\0'; //null terminator
+    
     printk(KERN_INFO "Device wrote %zu bytes\n", bytes_to_write);
 
     mutex_unlock(&w_mutex);
