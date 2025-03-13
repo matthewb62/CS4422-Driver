@@ -27,7 +27,6 @@ MODULE_VERSION("1.0");
 static struct class *ipc_class = NULL;
 static struct device *ipc_device = NULL;
 
-static int major_number; // Store dynamically allocated major number
 //static char buffer[BUFFER_SIZE]; 
 static char *shared_mem; // replacing buffer with shared memmory
 //static size_t buffer_size = 0; // Keeps track of how much data is stored in the buffer
@@ -52,11 +51,9 @@ static struct file_operations fops = {
 // intialising
 static int __init device_init(void) {
     int retval;
-    int major_number;
     retval = register_chrdev(MAJOR_DEVICE_NUMBER, DEVICE_NAME, &fops);  // register the device
 
     if (retval == 0) {
-        major_number = MAJOR_DEVICE_NUMBER;
         printk("dev_testdr registered to major number %d and minor number %d\n", MAJOR_DEVICE_NUMBER, MINOR_DEVICE_NUMBER);
     } else {
         printk("Could not register dev_testdr\n");
@@ -65,16 +62,16 @@ static int __init device_init(void) {
 
     ipc_class = class_create("ipc_class");
     if (IS_ERR(ipc_class)) {
-        unregister_chrdev(major_number, DEVICE_NAME);
+        unregister_chrdev(MAJOR_DEVICE_NUMBER, DEVICE_NAME);
         printk(KERN_ALERT "Failed to create device class\n");
         return PTR_ERR(ipc_class);
     }
 
     // Create device node - this makes the device appear in /dev/
-    ipc_device = device_create(ipc_class, NULL, MKDEV(major_number, 0), NULL, "ipc_device");
+    ipc_device = device_create(ipc_class, NULL, MKDEV(MAJOR_DEVICE_NUMBER, 0), NULL, "ipc_device");
     if (IS_ERR(ipc_device)) {
         class_destroy(ipc_class);
-        unregister_chrdev(major_number, DEVICE_NAME);
+        unregister_chrdev(MAJOR_DEVICE_NUMBER, DEVICE_NAME);
         printk(KERN_ALERT "Failed to create device\n");
         return PTR_ERR(ipc_device);
     }
@@ -89,15 +86,15 @@ static int __init device_init(void) {
         return -ENOMEM;  // out of memory
     }
 
-    printk(KERN_INFO "Device registered with major number %d\n", major_number);
+    printk(KERN_INFO "Device registered with major number %d\n", MAJOR_DEVICE_NUMBER);
     return 0;
 }
 
 // Cleaning up the device
 static void __exit device_exit(void) {
-    device_destroy(ipc_class, MKDEV(major_number, 0)); // Remove the device
+    device_destroy(ipc_class, MKDEV(MAJOR_DEVICE_NUMBER, 0)); // Remove the device
     class_destroy(ipc_class); // Remove the device class
-    unregister_chrdev(major_number, DEVICE_NAME);  // Unregister the device
+    unregister_chrdev(MAJOR_DEVICE_NUMBER, DEVICE_NAME);  // Unregister the device
 
     kfree(shared_mem); // free the memory
     printk(KERN_INFO "Device unregistered\n");
