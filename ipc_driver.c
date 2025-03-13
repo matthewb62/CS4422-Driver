@@ -18,7 +18,7 @@
 #define MAX_READER_COUNT 4 // The maximum amount of readers at any one time
 
 
-MODULE_LICENSE("MIT");
+MODULE_LICENSE("GPL");
 MODULE_AUTHOR("");
 MODULE_DESCRIPTION("A simple IPC driver");
 MODULE_VERSION("1.0");
@@ -26,13 +26,13 @@ MODULE_VERSION("1.0");
 static struct class *ipc_class = NULL;
 static struct device *ipc_device = NULL;
 
-//static char buffer[BUFFER_SIZE]; 
-static char *shared_mem; // replacing buffer with shared memmory
-//static size_t buffer_size = 0; // Keeps track of how much data is stored in the buffer
+static char *shared_mem;
+static int data_written = 0; //to track if message has been written or not
 
 // https://0xax.gitbooks.io/linux-insides/content/SyncPrim/linux-sync-5.html
 // https://oscourse.github.io/slides/semaphores_waitqs_kernel_api.pdf
 static DEFINE_SEMAPHORE(rw_sem, MAX_READER_COUNT); // Semaphore for read/write
+
 
 // Function prototypes
 static int device_open(struct inode *inode, struct file *file);
@@ -116,16 +116,33 @@ static int device_closed(struct inode *inode, struct file *file) {
 static ssize_t device_read(struct file *file, char __user *user_buffer, size_t len, loff_t *offset) {
     size_t bytes_to_read = min(len, SHM_SIZE);
 
-    down_interruptible(&rw_sem);
+    if (data_written == 0) {
+        printk(KERN_INFO "No data available to read\n");
+        return 0; 
+    } 
+
+    if (down_interruptible(&rw_sem)) {
+        printk(KERN_ALERT "Semaphore down interruptible failed\n");
+        return -EINTR;
+    }
+
     //encrypt data
 
-    if (copy_to_user(user_buffer, shared_mem, bytes_to_read)) { // copy data to user-space
+    printk(KERN_INFO "Reader acquired semaphore\n");
+
+
+    if (copy_to_user(user_buffer, shared_mem, bytes_to_read)) { 
+        printk(KERN_ERR "Failed to copy data to uesr space\n");
+        up(&rw_sem);  // to ensure its released or else it gets stuck
         return -EFAULT;
     }
 
     printk(KERN_INFO "Device read %zu bytes\n", bytes_to_read); // log device logging upon read
 
+    data_written = 0;
+
     up(&rw_sem);
+    printk(KERN_INFO "Reader released semaphore\n");;
 
     return bytes_to_read;
 }
@@ -136,25 +153,35 @@ static ssize_t device_write(struct file *file, const char __user *user_buffer, s
 
     // Decrement the semaphore by the max amount of readers.
     // This ensure that when the writer is writing, no readers are reading.
-    for (int i = 0; i < MAX_READER_COUNT; i++) {
-        down_interruptible(&rw_sem);
-    }
+
+   for (int i = 0; i < MAX_READER_COUNT; i++) {
+        if (down_interruptible(&rw_sem)) {
+            printk(KERN_ALERT "Semaphore down interruptible failed\n");
+            return -EINTR;
+        }
+        
 
     if (copy_from_user(shared_mem, user_buffer, bytes_to_write)) {
+        up(&rw_sem);
         return -EFAULT;
     }
+
+
+    data_written = 1;
+
+    wake_up_interruptible(&wait_queue);
 
     // encrypt data
 
     printk(KERN_INFO "Device wrote %zu bytes\n", bytes_to_write);
-    memset(shared_mem + bytes_to_write, 0, SHM_SIZE - bytes_to_write); //clearing buffer
 
-    // Increment the semaphore by the max amount of readers.
+    memset(shared_mem + bytes_to_write, 0, SHM_SIZE - bytes_to_write); //clearing buffer
+    
     for (int i = 0; i < MAX_READER_COUNT; i++) {
         up(&rw_sem);
     }
 
-return bytes_to_write;
+    return bytes_to_write;
 }
 
 module_init(device_init);
