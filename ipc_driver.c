@@ -1,4 +1,3 @@
-#include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/fs.h>
@@ -100,6 +99,7 @@ static void __exit device_exit(void) {
     printk(KERN_INFO "Device unregistered\n");
 }
 
+
 // Open func
 static int device_open(struct inode *inode, struct file *file) {
     printk(KERN_INFO "Device opened\n");
@@ -147,13 +147,14 @@ static ssize_t device_write(struct file *file, const char __user *user_buffer, s
     // encrypt data
 
     printk(KERN_INFO "Device wrote %zu bytes\n", bytes_to_write);
+    memset(shared_mem + bytes_to_write, 0, SHM_SIZE - bytes_to_write); //clearing buffer
 
     // Increment the semaphore by the max amount of readers.
     for (int i = 0; i < MAX_READER_COUNT; i++) {
         up(&rw_sem);
     }
 
-    return bytes_to_write;
+return bytes_to_write;
 }
 
 module_init(device_init);
